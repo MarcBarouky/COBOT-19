@@ -11,13 +11,13 @@ This Project features an interactive robot capable of recognizing and responding
 - **Autonomous Disinfection System**: The hydraulic system consists of flexible tubes with an connected to each other via joints and a pump, controlled by the main processor.
 
 ## Acknowledgments    
+- **Dr. Gabriel Khoury** and **Dr. Joseph Bakouny** for their expertise and guidance throughout the development of this project.   
 - The **MediaPipe** team for their gesture recognition library.  
 - **Android Developers** for their well structured documentation.   
-- **Dr. Gabriel Khoury** and **Dr. Joseph Bakouny** for their expertise and guidance throughout the development of this project.   
 
 ## Project Team  
 - **Marc Barouky (Software Engineer)** : Integrated the AI model in the android application)
-- **Jamal Lahad (Software Engineer)** : Implementated the Bluetooth connection between the robot and the mobile application.
+- **Jamal Lahad (Software Engineer)** : Implemented the Bluetooth connection between the robot and the mobile application.
 - **Elias Chedid (Electrical Engineer)** : Operated the obstacle avoidance system, programmed the main processor, tested and operate the necessary actuators (arms, screen, LED and hydraulic system)...   
 - **Ramzi Hage (Mechanical Engineer)** : Studied the hydraulic system, connected the system and printed the tank.
 - **Daniel Harfouche (Mechanical Engineer)** : Designed the tank, studied the hydraulic system study and connected the system.
