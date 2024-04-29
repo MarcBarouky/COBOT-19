@@ -106,18 +106,9 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     // a.c
     private fun handDetection () {
         results?.let { gestureRecognizerResult ->
-
             val gestures = gestureRecognizerResult.gestures()
             for (gesture in gestures) {
-//                Log.d(TAG_handDetection, "${gesture}")
-
-//                gesture object example :
-//                [<Category "Open_Palm" (displayName= score=0.60682195 index=-1)>]
-
-
-//                Used the following method to check for a hands gesture to detect salutation
                 if (gesture[0].toString().contains("Open_Palm")) {
-
                     CoroutineScope(Dispatchers.Main).launch {
                         if (!helloDetected) {
                             Log.d(TAG_handDetection, "HELLO DETECTED")
@@ -126,7 +117,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
                             delay(5000) // Delay for 5 seconds
                             helloDetected = false
                         }
-                        
                         invalidate() // Invalidate the view to trigger redraw
                     }
                 }
