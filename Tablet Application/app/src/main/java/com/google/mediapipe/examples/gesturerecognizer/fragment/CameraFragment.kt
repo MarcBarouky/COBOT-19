@@ -60,14 +60,21 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-//, BluetoothConnectionFragment.BluetoothActionListener
+
 class CameraFragment : Fragment(),
     GestureRecognizerHelper.GestureRecognizerListener{
 
     companion object {
-        private const val TAG = "Hand gesture recognizer, CameraFragment"
-
+        // TAGS for the logs of each function
+        private const val TAG = "Hand gesture recognizer, CF"
+        private const val TAG_startScanning = "startScanning, CF"
+        private const val TAG_sendLetterHToBLEDevice = "sendLetterHToBLEDevice, CF"
+        private const val TAG_onCreateView = "onCreateView, CF"
+        private const val TAG_connectToDevice = "connectToDevice, CF"
+        private const val TAG_Callback_onScanResult = "callback_onScanResult, CF"
+        private const val TAG_bluetoothActionDelegate = "bluetoothActionDelegate, CF"
     }
+
     private var bluetoothGatt: BluetoothGatt? = null
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
 
@@ -88,53 +95,49 @@ class CameraFragment : Fragment(),
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_FRONT
 
-//    interface BluetoothActionListener {
-//        fun sendLetterHToBLEDevice()
-//    }
-
-
     /** Blocking ML operations are performed using this executor */
     private lateinit var backgroundExecutor: ExecutorService
 
-    @RequiresApi(Build.VERSION_CODES.S)
-    fun sendLetterHToBLEDevice() {
-        Log.d(TAG, "Inside sendLetterHToBLEDevice method.")
+    //BLE variables
+    private val REQUEST_BLUETOOTH_CONNECT = 101
+    private val targetDeviceMacAddress = "3C:A3:08:90:7D:62" // a.c
+    private var bluetoothAdapter: BluetoothAdapter? = null
+    private var bluetoothLeScanner: BluetoothLeScanner? = null
 
-        bluetoothGatt?.services?.forEach { service ->
-            Log.d(TAG, "Available service: ${service.uuid}")
-        }
+    @RequiresApi(Build.VERSION_CODES.S)
+    fun sendLetterHToBLEDevice() { // a.c
+        Log.d(TAG_sendLetterHToBLEDevice, "Inside sendLetterHToBLEDevice method.")
+
+//        If we want to view available services before sending
+//        bluetoothGatt?.services?.forEach { service ->
+//            Log.d(TAG_sendLetterHToBLEDevice, "Available service: ${service.uuid}")
+//        }
+
+        // UUIDs proper to HM-10 chips
         val serviceUuid = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")
         val characteristicUuid = UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb")
 
-        Log.d(TAG, "val service = bluetoothGatt?.getService(serviceUuid)")
         val service = bluetoothGatt?.getService(serviceUuid)
-        Log.d(TAG, "Service retrieved: $service")
-        Log.d(TAG, "val characteristic = service?.getCharacteristic(characteristicUuid)")
+        Log.d(TAG_sendLetterHToBLEDevice, "Service retrieved: $service")
         val characteristic = service?.getCharacteristic(characteristicUuid)
-        Log.d(TAG, "Characteristic retrieved: $characteristic")
+        Log.d(TAG_sendLetterHToBLEDevice, "Characteristic retrieved: $characteristic")
 
         characteristic?.let {
-            it.value = byteArrayOf('H'.code.toByte())
-//            it.value = "HH".toByteArray(Charsets.US_ASCII)
+            it.value = byteArrayOf('H'.code.toByte())  // a.c
             if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "Loc permission not granted.");
+                Log.d(TAG_sendLetterHToBLEDevice, "Location permission not granted.");
                 ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 1)
             } else {
                 if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "Bluetooth permission not granted.");
+                    Log.d(TAG_sendLetterHToBLEDevice, "Bluetooth permission not granted.");
                     ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
                 } else {
-                    Log.d(TAG, "Bluetooth scan permission granted. Initiating  sendLetterH...");
+                    Log.d(TAG_sendLetterHToBLEDevice, "Bluetooth scan permission granted. Initiating  sendLetterH...");
                 }
             }
-            Log.d(TAG, "bluetoothGatt?.writeCharacteristic(it)")
-//            CoroutineScope(Dispatchers.Main).launch {
-//                delay(10000)
-//            }
 
-            bluetoothGatt?.writeCharacteristic(it)
-//            Toast.makeText(context, "H Sent", Toast.LENGTH_SHORT).show()
-            Log.d(TAG, "DONE: bluetoothGatt?.writeCharacteristic(it)")
+            bluetoothGatt?.writeCharacteristic(it) // Function call responsible for sending the letter
+            Log.d(TAG_sendLetterHToBLEDevice, "DONE: bluetoothGatt?.writeCharacteristic(it)")
 
         }
     }
@@ -157,20 +160,7 @@ class CameraFragment : Fragment(),
                 gestureRecognizerHelper.setupGestureRecognizer()
             }
         }
-        /// added scan onResume()
-//        if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-//            if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-//                ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
-//            } else {
-//                bluetoothLeScanner?.startScan(leScanCallback)
-//
-//            }
-//            // Consider adding logic to stop the scan after a certain period to save battery
-//        } else {
-//            // Optionally, you could request the permission here if not already requested
-//            // But typically, you would have already requested it before reaching this point
-//        }
-//        Log.d(TAG2, "BLE scanner stopped.")
+
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -185,21 +175,7 @@ class CameraFragment : Fragment(),
             // Close the Gesture Recognizer helper and release resources
             backgroundExecutor.execute { gestureRecognizerHelper.clearGestureRecognizer() }
         }
-//        bluetoothLeScanner?.stopScan(leScanCallback)
 
-        /// added stopscan onPAUSE
-//        if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-//            if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-//                ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
-//            } else {
-//                bluetoothLeScanner?.stopScan(leScanCallback)
-//            }
-//            // Consider adding logic to stop the scan after a certain period to save battery
-//        } else {
-//            // Optionally, you could request the permission here if not already requested
-//            // But typically, you would have already requested it before reaching this point
-//        }
-//        Log.d(TAG2, "BLE scanner stopped.")
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -224,9 +200,9 @@ class CameraFragment : Fragment(),
             Long.MAX_VALUE, TimeUnit.NANOSECONDS
         )
     }
-    private var bluetoothAdapter: BluetoothAdapter? = null
-    private var bluetoothLeScanner: BluetoothLeScanner? = null
 
+
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -239,17 +215,29 @@ class CameraFragment : Fragment(),
         bluetoothAdapter = bluetoothManager.adapter
         bluetoothLeScanner = bluetoothAdapter?.bluetoothLeScanner
 
+        // a.c bluetooth button
+        fragmentCameraBinding.connectButton.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 1)
+            } else {
+                if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
+                } else {
+                    startScanning()
+                    Log.d(TAG_onCreateView, "startScanning finished")
+
+//                Toast.makeText(context, "onViewCreated: Outside startScanning.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         return fragmentCameraBinding.root
     }
 
-    //ble variables
-    private val REQUEST_BLUETOOTH_CONNECT = 101
-    private val targetDeviceMacAddress = "3C:A3:08:90:7D:62"
-    private val TAG2 = "BT in CameraFragment"
+
 
 
     @RequiresApi(Build.VERSION_CODES.S)
-    private fun connectToDevice(device: BluetoothDevice) {
+    private fun connectToDevice(device: BluetoothDevice) { // a.c
         // Context could be null, hence the call to requireContext() inside onViewCreated.
         val context = context ?: return
 
@@ -278,12 +266,13 @@ class CameraFragment : Fragment(),
                     1
                 )
             } else {
-                Log.d(TAG2, "Creating Gatt object bluetoothGatt");
+                Log.d(TAG_connectToDevice, "Creating Gatt object bluetoothGatt");
                 if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                     // Permission is not granted, request it
                     ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_CONNECT), REQUEST_BLUETOOTH_CONNECT)
                 } else {
                     // Permission is granted, you can proceed with Bluetooth operations
+                    // a.c gatt explanation
                     bluetoothGatt = device.connectGatt(context, false,
                                                         object : BluetoothGattCallback() {
                         override fun onConnectionStateChange( gatt: BluetoothGatt?,
@@ -291,54 +280,50 @@ class CameraFragment : Fragment(),
                                                             newState: Int ) {
                             super.onConnectionStateChange(bluetoothGatt, status, newState)
                             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                                Log.d(TAG2, "Successfully connected to the BLE device.")
+                                Log.d(TAG_connectToDevice, "Successfully connected to the BLE device.")
 //                                Toast.makeText(context, "Successfully connected to BLE device.", Toast.LENGTH_SHORT).show()
                                 // Once connected, you can discover services or perform other operations.
                                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                                    Log.d(TAG2, "Connected to GATT server.")
+                                    Log.d(TAG_connectToDevice, "Connected to GATT server.")
                                     if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                                         ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 1)
                                     } else {
                                         if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                                             ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
                                         } else {
-                                            Log.d(TAG2, "Attempting to start service discovery: " +
+                                            Log.d(TAG_connectToDevice, "Attempting to start service discovery: " +
                                                     bluetoothGatt?.discoverServices())
-
                                         }
                                     }
 
                                 }
                             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                                Log.d(TAG2, "Disconnected from the BLE device.")
+                                Log.d(TAG_connectToDevice, "Disconnected from the BLE device.")
                             }
                         }
 
-                        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) { // a.c
                             super.onServicesDiscovered(bluetoothGatt, status)
                             if (status == BluetoothGatt.GATT_SUCCESS) {
-                                Log.d(TAG2, "Services discovered. You can now access the device's services.")
-                                Log.d(TAG2, "Services discovered. Available services:")
+                                Log.d(TAG_connectToDevice, "Services discovered. You can now access the device's services.")
+                                Log.d(TAG_connectToDevice, "Services discovered. Available services:")
                                 bluetoothGatt?.services?.forEach { service ->
-                                    Log.d(TAG2, "Service UUID: ${service.uuid}")
+                                    Log.d(TAG_connectToDevice, "Service UUID: ${service.uuid}")
                                     service.characteristics.forEach { characteristic ->
-                                        Log.d(TAG2, "  Characteristic UUID: ${characteristic.uuid}")
+                                        Log.d(TAG_connectToDevice, "  Characteristic UUID: ${characteristic.uuid}")
                                     }
                                 }
                             } else {
-                                Log.w(TAG2, "Service discovery failed with status: $status")
+                                Log.w(TAG_connectToDevice, "Service discovery failed with status: $status")
                             }
                         }
                     })
                 }
-
-
-                // Keep a reference to BluetoothGatt if you need to interact with the device later.
             }
         }
     }
 
-    private val leScanCallback = object : ScanCallback() {
+    private val leScanCallback = object : ScanCallback() { // a.c
 
         @RequiresApi(Build.VERSION_CODES.S)
         override fun onScanResult(callbackType: Int,
@@ -348,7 +333,7 @@ class CameraFragment : Fragment(),
             result?.let {
                 if (it.device.address.equals(targetDeviceMacAddress, ignoreCase = true)) {
                     // Device found. Now connect to the device.
-                    Log.d(TAG2, "Target device found. MAC Address: ${it.device.address}. Connecting...")
+                    Log.d(TAG_Callback_onScanResult, "Target device found. MAC Address: ${it.device.address}. Connecting...")
                     connectToDevice(it.device)
                     // Optionally, stop scanning since the target device is found.
                     if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -357,7 +342,7 @@ class CameraFragment : Fragment(),
                         if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                             ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
                         } else {
-                            Log.d(TAG2, "Stopping Bluetooth scanning, device found...");
+                            Log.d(TAG_Callback_onScanResult, "Stopping Bluetooth scanning, device found...");
                             bluetoothLeScanner?.stopScan(this)
                         }
                     }
@@ -368,45 +353,31 @@ class CameraFragment : Fragment(),
 
         override fun onScanFailed(errorCode: Int) {
             super.onScanFailed(errorCode)
-            Log.e(TAG2, "Scan failed with error code: $errorCode")
+            Log.e(TAG_Callback_onScanResult, "Scan failed with error code: $errorCode")
         }
 
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun startScanning() {
-        Log.d(TAG2, "startScanning called (inside startScanning)")
+        Log.d(TAG_startScanning, "Inside startScanning method.")
         if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG2, "startScanning: Bluetooth scan permission not granted. Requesting permission...")
                 ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
             } else {
-                Log.d(TAG2, "startScanning: Bluetooth scan permission granted: (bluetoothLeScanner?.startScan(leScanCallback))");
-                Log.d(TAG2, "Bluetooth adapter enabled: ${bluetoothAdapter?.isEnabled}")
-                Log.d(TAG2, "Bluetooth scanner instance: $bluetoothLeScanner")
-//                val settings = ScanSettings.Builder()
-//                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-//                    .build()
-//                bluetoothLeScanner?.startScan(null, settings, leScanCallback)
+                Log.d(TAG_startScanning, "Bluetooth scan permission granted: (bluetoothLeScanner?.startScan(leScanCallback))");
+                Log.d(TAG_startScanning, "Bluetooth adapter enabled: ${bluetoothAdapter?.isEnabled}")
+                Log.d(TAG_startScanning, "Bluetooth scanner instance: $bluetoothLeScanner")
 
-
-                bluetoothLeScanner?.startScan(leScanCallback)
-
-//                bluetoothLeScanner?.startScan(leScanCallback)
-                if (bluetoothGatt == null) {
+                bluetoothLeScanner?.startScan(leScanCallback) // a.c
+                if (bluetoothGatt == null) { // a.c
                     // Device doesn't support Bluetooth
-                    Log.d(TAG2, "bluetoothLeScanner?.startScan(leScanCallback): no bluetoothGatt");
+                    Log.d(TAG_startScanning, "bluetoothGatt object unavailable");
                 } else {
-                    Log.d(TAG2, "bluetoothLeScanner?.startScan(leScanCallback): yes bluetoothGatt");
+                    Log.d(TAG_startScanning, "bluetoothGatt object available");
                 }
-
-                Toast.makeText(context, "startScanning: bluetoothLeScanner done.", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(context, "bluetoothLeScanner done.", Toast.LENGTH_SHORT).show() // a.c
             }
-            // Consider adding logic to stop the scan after a certain period to save battery
-        } else {
-            // Optionally, you could request the permission here if not already requested
-            // But typically, you would have already requested it before reaching this point
-//            Toast.makeText(context, "startScanning: Permission for location not granted. Unable to scan for BLE devices.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -414,16 +385,6 @@ class CameraFragment : Fragment(),
     @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        //bt khabsa
-//        val overlayView = view.findViewById<OverlayView>(R.id.overlay) // Ensure this ID matches your layout
-//        overlayView.bluetoothActionListener = object : BluetoothConnectionFragment.BluetoothActionListener {
-//            override fun H
-//        }
-
-        //bte khabsa 2
-//        val overlayView = view.findViewById<OverlayView>(R.id.overlay)
-//        overlayView.bluetoothActionListener = this
 
         with(fragmentCameraBinding.recyclerviewResults) {
             layoutManager = LinearLayoutManager(requireContext())
@@ -452,39 +413,16 @@ class CameraFragment : Fragment(),
                 gestureRecognizerListener = this
             )
         }
-        // start scanning directly
-        if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG2, "onViewCreated: Asking permissions")
-            ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 1)
-        } else {
-            Log.d(TAG2, "onViewCreated: Checking for BT scan permissions...")
-            if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG2, "onViewCreated: Bluetooth scan permission not granted. Requesting permission...")
-                ActivityCompat.requestPermissions(requireActivity(), arrayOf(android.Manifest.permission.BLUETOOTH_SCAN), 1)
-            } else {
-                Log.d(TAG2, "onViewCreated: Bluetooth scan permission granted. Initiating Bluetooth scanning...");
-                startScanning()
 
-//                Toast.makeText(context, "onViewCreated: Outside startScanning.", Toast.LENGTH_SHORT).show()
-            }
-            Log.d(TAG2, "onViewCreated: startScanning finished")
-        }
         val overlayView = view.findViewById<OverlayView>(R.id.overlay) // Use the actual ID of your OverlayView
-
+        // a.c
         overlayView.bluetoothActionDelegate = object : OverlayView.BluetoothActionDelegate {
             override fun onPerformBluetoothAction() {
-                Log.d(TAG2, "inside onPerformBluetoothAction")
-                Log.d(TAG2, "calling sendLetterH")
+                Log.d(TAG_bluetoothActionDelegate, "inside onPerformBluetoothAction")
+                Log.d(TAG_bluetoothActionDelegate, "calling sendLetterH")
                 sendLetterHToBLEDevice()
-//                CoroutineScope(Dispatchers.Main).launch {
-//                    Log.d(TAG2, "calling sendLetterH")
-//                    sendLetterHToBLEDevice()
-//                    //delay(10000) // Delay for 5 seconds
-//                }
-                //sendLetterHToBLEDevice()
             }
         }
-
 
         // Attach listeners to UI control widgets
         initBottomSheetControls()

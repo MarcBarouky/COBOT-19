@@ -45,7 +45,9 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var imageWidth: Int = 1
     private var imageHeight: Int = 1
     private var helloDetected = false
-    private val TAG = "Overlay"
+    private val TAG_handDetection = "handDetection, OverlayView"
+
+
 
     private var picture_neutral: Bitmap? = null
     private var picture_hello: Bitmap? = null
@@ -60,6 +62,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         }
     }
 
+    // a.c
     interface BluetoothActionDelegate {
         fun onPerformBluetoothAction()
     }
@@ -97,22 +100,30 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         picture_hello?.let {
             canvas.drawBitmap(it, null, dstRect, null)
         }
-        canvas.drawText("Hello !", 0F, 0F, Paint())
+        canvas.drawText("Hello !", 0F, 0F, Paint()) // c.o
     }
 
+    // a.c
     private fun handDetection () {
         results?.let { gestureRecognizerResult ->
 
             val gestures = gestureRecognizerResult.gestures()
             for (gesture in gestures) {
+//                Log.d(TAG_handDetection, "${gesture}")
+
+//                gesture object example :
+//                [<Category "Open_Palm" (displayName= score=0.60682195 index=-1)>]
+
+
+//                Used the following method to check for a hands gesture to detect salutation
                 if (gesture[0].toString().contains("Open_Palm")) {
 
                     CoroutineScope(Dispatchers.Main).launch {
                         if (!helloDetected) {
-                            bluetoothActionDelegate?.onPerformBluetoothAction()
+                            Log.d(TAG_handDetection, "HELLO DETECTED")
                             helloDetected = true
+                            bluetoothActionDelegate?.onPerformBluetoothAction()
                             delay(5000) // Delay for 5 seconds
-                            Log.d(TAG, "HELLO DETECTED")
                             helloDetected = false
                         }
                         
